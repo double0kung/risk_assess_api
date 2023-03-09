@@ -123,6 +123,10 @@ DELETE /control_risks/{control_risk_id}: Delete a specific control risk
 
 ##Detail any third party services:
 
+POSTMAN to test API
+
+DB Browser for SQLite
+
 Flask-RESTful
 
 Flask-Security
