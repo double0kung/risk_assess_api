@@ -127,6 +127,8 @@ POSTMAN to test API
 
 DB Browser for SQLite
 
+Flask-Marshmallow for object serialisation or deserialisation library
+
 Flask-RESTful
 
 Flask-Security
