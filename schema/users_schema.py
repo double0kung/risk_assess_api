@@ -2,7 +2,7 @@ from app import ma
 
 class UserSchema(ma.Schema):
     class Meta:
-        fields = ("id", "email", "first_name", "last_name", "password")
+        fields = ("user_id", "email", "first_name", "last_name", "password")
 
 
 user_schema = UserSchema()
