@@ -470,6 +470,26 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
 
     _default_decimal_return_scale = 10
 
+    @overload
+    def __init__(
+        self: Numeric[decimal.Decimal],
+        precision: Optional[int] = ...,
+        scale: Optional[int] = ...,
+        decimal_return_scale: Optional[int] = ...,
+        asdecimal: Literal[True] = ...,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: Numeric[float],
+        precision: Optional[int] = ...,
+        scale: Optional[int] = ...,
+        decimal_return_scale: Optional[int] = ...,
+        asdecimal: Literal[False] = ...,
+    ):
+        ...
+
     def __init__(
         self,
         precision: Optional[int] = None,
@@ -3156,6 +3176,20 @@ class TupleType(TypeEngine[Tuple[Any, ...]]):
             item_type() if isinstance(item_type, type) else item_type
             for item_type in types
         ]
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+
+        if value is type_api._NO_VALUE_IN_LIST:
+            return super().coerce_compared_value(op, value)
+        else:
+            return TupleType(
+                *[
+                    typ.coerce_compared_value(op, elem)
+                    for typ, elem in zip(self.types, value)
+                ]
+            )
 
     def _resolve_values_to_types(self, value: Any) -> TupleType:
         if self._fully_typed:

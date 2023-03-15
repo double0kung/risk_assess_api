@@ -37,6 +37,8 @@ from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .base import PassiveFlag
 from .context import FromStatement
+from .context import ORMCompileState
+from .context import QueryContext
 from .util import _none_set
 from .util import state_str
 from .. import exc as sa_exc
@@ -55,7 +57,6 @@ from ..util import EMPTY_DICT
 if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
     from .base import LoaderCallableStatus
-    from .context import QueryContext
     from .interfaces import ORMOption
     from .mapper import Mapper
     from .query import Query
@@ -469,6 +470,7 @@ def load_on_ident(
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,
     require_pk_cols: bool = False,
+    is_user_refresh: bool = False,
 ):
     """Load the given identity key from the database."""
     if key is not None:
@@ -490,6 +492,7 @@ def load_on_ident(
         bind_arguments=bind_arguments,
         execution_options=execution_options,
         require_pk_cols=require_pk_cols,
+        is_user_refresh=is_user_refresh,
     )
 
 
@@ -507,6 +510,7 @@ def load_on_pk_identity(
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,
     require_pk_cols: bool = False,
+    is_user_refresh: bool = False,
 ):
 
     """Load the given primary key identity from the database."""
@@ -515,9 +519,6 @@ def load_on_pk_identity(
     q = query._clone()
 
     assert not q._is_lambda_element
-
-    # TODO: fix these imports ....
-    from .context import QueryContext, ORMCompileState
 
     if load_options is None:
         load_options = QueryContext.default_load_options
@@ -651,6 +652,7 @@ def load_on_pk_identity(
         only_load_props=only_load_props,
         refresh_state=refresh_state,
         identity_token=identity_token,
+        is_user_refresh=is_user_refresh,
     )
 
     q._compile_options = new_compile_options
@@ -687,6 +689,7 @@ def _set_get_options(
     only_load_props=None,
     refresh_state=None,
     identity_token=None,
+    is_user_refresh=None,
 ):
 
     compile_options = {}
@@ -703,6 +706,8 @@ def _set_get_options(
     if identity_token:
         load_options["_identity_token"] = identity_token
 
+    if is_user_refresh:
+        load_options["_is_user_refresh"] = is_user_refresh
     if load_options:
         load_opt += load_options
     if compile_options:
@@ -965,17 +970,17 @@ def _instance_processor(
 
     if not refresh_state and _polymorphic_from is not None:
         key = ("loader", path.path)
+
         if key in context.attributes and context.attributes[key].strategy == (
             ("selectinload_polymorphic", True),
         ):
-            selectin_load_via = mapper._should_selectin_load(
-                context.attributes[key].local_opts["entities"],
-                _polymorphic_from,
-            )
+            option_entities = context.attributes[key].local_opts["entities"]
         else:
-            selectin_load_via = mapper._should_selectin_load(
-                None, _polymorphic_from
-            )
+            option_entities = None
+        selectin_load_via = mapper._should_selectin_load(
+            option_entities,
+            _polymorphic_from,
+        )
 
         if selectin_load_via and selectin_load_via is not _polymorphic_from:
             # only_load_props goes w/ refresh_state only, and in a refresh
@@ -983,8 +988,13 @@ def _instance_processor(
             # loading does not apply
             assert only_load_props is None
 
-            callable_ = _load_subclass_via_in(context, path, selectin_load_via)
-
+            callable_ = _load_subclass_via_in(
+                context,
+                path,
+                selectin_load_via,
+                _polymorphic_from,
+                option_entities,
+            )
             PostLoad.callable_for_path(
                 context,
                 load_path,
@@ -1205,17 +1215,42 @@ def _instance_processor(
     return _instance
 
 
-def _load_subclass_via_in(context, path, entity):
+def _load_subclass_via_in(
+    context, path, entity, polymorphic_from, option_entities
+):
     mapper = entity.mapper
+
+    # TODO: polymorphic_from seems to be a Mapper in all cases.
+    # this is likely not needed, but as we dont have typing in loading.py
+    # yet, err on the safe side
+    polymorphic_from_mapper = polymorphic_from.mapper
+    not_against_basemost = polymorphic_from_mapper.inherits is not None
 
     zero_idx = len(mapper.base_mapper.primary_key) == 1
 
-    if entity.is_aliased_class:
-        q, enable_opt, disable_opt = mapper._subclass_load_via_in(entity)
+    if entity.is_aliased_class or not_against_basemost:
+        q, enable_opt, disable_opt = mapper._subclass_load_via_in(
+            entity, polymorphic_from
+        )
     else:
         q, enable_opt, disable_opt = mapper._subclass_load_via_in_mapper
 
     def do_load(context, path, states, load_only, effective_entity):
+        if not option_entities:
+            # filter out states for those that would have selectinloaded
+            # from another loader
+            # TODO: we are currently ignoring the case where the
+            # "selectin_polymorphic" option is used, as this is much more
+            # complex / specific / very uncommon API use
+            states = [
+                (s, v)
+                for s, v in states
+                if s.mapper._would_selectin_load_only_from_given_mapper(mapper)
+            ]
+
+            if not states:
+                return
+
         orig_query = context.query
 
         options = (enable_opt,) + orig_query._with_options + (disable_opt,)

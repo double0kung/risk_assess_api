@@ -89,6 +89,7 @@ from .elements import literal_column
 from .elements import TableValuedColumn
 from .elements import UnaryExpression
 from .operators import OperatorType
+from .sqltypes import NULLTYPE
 from .visitors import _TraverseInternalsType
 from .visitors import InternalTraversal
 from .visitors import prefix_anon_map
@@ -3561,7 +3562,7 @@ class SelectBase(
 
         .. seealso::
 
-            :meth:`_expression.SelectBase.as_scalar`.
+            :meth:`_expression.SelectBase.scalar_subquery`.
 
         """
         return self.scalar_subquery().label(name)
@@ -4551,7 +4552,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def from_statement(
-        cls, statement: Select[Any], from_statement: ExecutableReturnsRows
+        cls, statement: Select[Any], from_statement: roles.ReturnsRowsRole
     ) -> ExecutableReturnsRows:
         cls._plugin_not_implemented()
 
@@ -5167,6 +5168,8 @@ class Select(
         GenerativeSelect.__init__(self)
 
     def _scalar_type(self) -> TypeEngine[Any]:
+        if not self._raw_columns:
+            return NULLTYPE
         elem = self._raw_columns[0]
         cols = list(elem._select_iterable)
         return cols[0].type
@@ -5273,7 +5276,7 @@ class Select(
         return meth(self)
 
     def from_statement(
-        self, statement: ExecutableReturnsRows
+        self, statement: roles.ReturnsRowsRole
     ) -> ExecutableReturnsRows:
         """Apply the columns which this :class:`.Select` would select
         onto another statement.
@@ -6770,7 +6773,7 @@ class Exists(UnaryExpression[bool]):
         return e
 
 
-class TextualSelect(SelectBase, Executable, Generative):
+class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
     """Wrap a :class:`_expression.TextClause` construct within a
     :class:`_expression.SelectBase`
     interface.
@@ -6815,14 +6818,28 @@ class TextualSelect(SelectBase, Executable, Generative):
     def __init__(
         self,
         text: TextClause,
-        columns: List[ColumnClause[Any]],
+        columns: List[_ColumnExpressionArgument[Any]],
+        positional: bool = False,
+    ) -> None:
+
+        self._init(
+            text,
+            # convert for ORM attributes->columns, etc
+            [
+                coercions.expect(roles.LabeledColumnExprRole, c)
+                for c in columns
+            ],
+            positional,
+        )
+
+    def _init(
+        self,
+        text: TextClause,
+        columns: List[NamedColumn[Any]],
         positional: bool = False,
     ) -> None:
         self.element = text
-        # convert for ORM attributes->columns, etc
-        self.column_args = [
-            coercions.expect(roles.ColumnsClauseRole, c) for c in columns
-        ]
+        self.column_args = columns
         self.positional = positional
 
     @HasMemoized_ro_memoized_attribute

@@ -1,4 +1,11 @@
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
+
+# Global Intances
+
+db = SQLAlchemy()
+ma = Marshmallow()
 
 
 def create_app(): # Having a function allows for better separation of concerns between the application initialization and the application logic
@@ -7,8 +14,11 @@ def create_app(): # Having a function allows for better separation of concerns b
     # add config from object
     app.config.from_object("config.app_config")
 
-    @app.get("/")
-    def hello_world():
-        return {"message":"Hi, I'm not learning anything"}
+    db.init_app(app)
+    ma.init_app(app)
+
+    from controller import registerable_controllers
+    for controller in registerable_controllers:
+        app.register_blueprint(controller)
     
     return app

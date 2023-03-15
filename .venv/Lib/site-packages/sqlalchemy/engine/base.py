@@ -1306,7 +1306,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def scalars(
         self,
         statement: TypedReturnsRows[Tuple[_T]],
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> ScalarResult[_T]:
@@ -1316,7 +1316,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def scalars(
         self,
         statement: Executable,
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> ScalarResult[Any]:
@@ -1325,7 +1325,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def scalars(
         self,
         statement: Executable,
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> ScalarResult[Any]:
@@ -2275,6 +2275,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     context,
                     self._is_disconnect,
                     invalidate_pool_on_disconnect,
+                    False,
                 )
 
                 for fn in self.dialect.dispatch.handle_error:
@@ -2345,6 +2346,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         engine: Optional[Engine] = None,
         is_disconnect: Optional[bool] = None,
         invalidate_pool_on_disconnect: bool = True,
+        is_pre_ping: bool = False,
     ) -> NoReturn:
         exc_info = sys.exc_info()
 
@@ -2385,6 +2387,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 None,
                 is_disconnect,
                 invalidate_pool_on_disconnect,
+                is_pre_ping,
             )
             for fn in dialect.dispatch.handle_error:
                 try:
@@ -2443,6 +2446,7 @@ class ExceptionContextImpl(ExceptionContext):
         "execution_context",
         "is_disconnect",
         "invalidate_pool_on_disconnect",
+        "is_pre_ping",
     )
 
     def __init__(
@@ -2458,6 +2462,7 @@ class ExceptionContextImpl(ExceptionContext):
         context: Optional[ExecutionContext],
         is_disconnect: bool,
         invalidate_pool_on_disconnect: bool,
+        is_pre_ping: bool,
     ):
         self.engine = engine
         self.dialect = dialect
@@ -2469,6 +2474,7 @@ class ExceptionContextImpl(ExceptionContext):
         self.parameters = parameters
         self.is_disconnect = is_disconnect
         self.invalidate_pool_on_disconnect = invalidate_pool_on_disconnect
+        self.is_pre_ping = is_pre_ping
 
 
 class Transaction(TransactionalContext):

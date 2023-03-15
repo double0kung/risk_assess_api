@@ -493,6 +493,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def arraysize(self):
+        """dialect includes the required pep-249 attribute
+        ``cursor.arraysize``"""
+
+        return exclusions.open()
+
+    @property
     def emulated_lastrowid(self):
         """target dialect retrieves cursor.lastrowid, or fetches
         from a database-side function after an insert() construct executes,
@@ -851,6 +858,24 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def date_implicit_bound(self):
+        """target dialect when given a date object will bind it such
+        that the database server knows the object is a date, and not
+        a plain string.
+
+        """
+        return exclusions.open()
+
+    @property
+    def time_implicit_bound(self):
+        """target dialect when given a time object will bind it such
+        that the database server knows the object is a time, and not
+        a plain string.
+
+        """
+        return exclusions.open()
+
+    @property
     def datetime_implicit_bound(self):
         """target dialect when given a datetime object will bind it such
         that the database server knows the object is a datetime, and not
@@ -1174,6 +1199,20 @@ class SuiteRequirements(Requirements):
     def precision_generic_float_type(self):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type.
+
+        """
+        return exclusions.open()
+
+    @property
+    def literal_float_coercion(self):
+        """target backend will return the exact float value 15.7563
+        with only four significant digits from this statement:
+
+        SELECT :param
+
+        where :param is the Python float 15.7563
+
+        i.e. it does not return 15.75629997253418
 
         """
         return exclusions.open()

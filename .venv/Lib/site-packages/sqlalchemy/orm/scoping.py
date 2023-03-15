@@ -76,7 +76,14 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 
 
-class _QueryDescriptorType(Protocol):
+class QueryPropertyDescriptor(Protocol):
+    """Describes the type applied to a class-level
+    :meth:`_orm.scoped_session.query_property` attribute.
+
+    .. versionadded:: 2.0.5
+
+    """
+
     def __get__(self, instance: Any, owner: Type[_T]) -> Query[_T]:
         ...
 
@@ -254,17 +261,25 @@ class scoped_session(Generic[_S]):
 
     def query_property(
         self, query_cls: Optional[Type[Query[_T]]] = None
-    ) -> _QueryDescriptorType:
-        """return a class property which produces a :class:`_query.Query`
-        object
-        against the class and the current :class:`.Session` when called.
+    ) -> QueryPropertyDescriptor:
+        """return a class property which produces a legacy
+        :class:`_query.Query` object against the class and the current
+        :class:`.Session` when called.
+
+        .. legacy:: The :meth:`_orm.scoped_session.query_property` accessor
+           is specific to the legacy :class:`.Query` object and is not
+           considered to be part of :term:`2.0-style` ORM use.
 
         e.g.::
+
+            from sqlalchemy.orm import QueryPropertyDescriptor
+            from sqlalchemy.orm import scoped_session
+            from sqlalchemy.orm import sessionmaker
 
             Session = scoped_session(sessionmaker())
 
             class MyClass:
-                query = Session.query_property()
+                query: QueryPropertyDescriptor = Session.query_property()
 
             # after mappers are defined
             result = MyClass.query.filter(MyClass.name=='foo').all()
@@ -1598,11 +1613,23 @@ class scoped_session(Generic[_S]):
         :func:`_orm.relationship` oriented attributes will also be immediately
         loaded if they were already eagerly loaded on the object, using the
         same eager loading strategy that they were loaded with originally.
-        Unloaded relationship attributes will remain unloaded, as will
-        relationship attributes that were originally lazy loaded.
 
         .. versionadded:: 1.4 - the :meth:`_orm.Session.refresh` method
            can also refresh eagerly loaded attributes.
+
+        :func:`_orm.relationship` oriented attributes that would normally
+        load using the ``select`` (or "lazy") loader strategy will also
+        load **if they are named explicitly in the attribute_names
+        collection**, emitting a SELECT statement for the attribute using the
+        ``immediate`` loader strategy.  If lazy-loaded relationships are not
+        named in :paramref:`_orm.Session.refresh.attribute_names`, then
+        they remain as "lazy loaded" attributes and are not implicitly
+        refreshed.
+
+        .. versionchanged:: 2.0.4  The :meth:`_orm.Session.refresh` method
+           will now refresh lazy-loaded :func:`_orm.relationship` oriented
+           attributes for those which are named explicitly in the
+           :paramref:`_orm.Session.refresh.attribute_names` collection.
 
         .. tip::
 
@@ -1780,7 +1807,9 @@ class scoped_session(Generic[_S]):
 
         :return:  a :class:`_result.ScalarResult` object
 
-        .. versionadded:: 1.4.24
+        .. versionadded:: 1.4.24 Added :meth:`_orm.Session.scalars`
+
+        .. versionadded:: 1.4.26 Added :meth:`_orm.scoped_session.scalars`
 
         .. seealso::
 

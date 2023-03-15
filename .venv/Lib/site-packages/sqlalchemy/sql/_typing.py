@@ -11,6 +11,7 @@ import operator
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Mapping
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -40,7 +41,6 @@ if TYPE_CHECKING:
     from .dml import UpdateBase
     from .dml import ValuesBase
     from .elements import ClauseElement
-    from .elements import ColumnClause
     from .elements import ColumnElement
     from .elements import KeyedColumnElement
     from .elements import quoted_name
@@ -186,6 +186,7 @@ overall which brings in the TextClause object also.
 
 """
 
+
 _ColumnExpressionOrLiteralArgument = Union[Any, _ColumnExpressionArgument[_T]]
 
 _ColumnExpressionOrStrLabelArgument = Union[str, _ColumnExpressionArgument[_T]]
@@ -224,7 +225,10 @@ _SelectStatementForCompoundArgument = Union[
 """SELECT statement acceptable by ``union()`` and other SQL set operations"""
 
 _DMLColumnArgument = Union[
-    str, "ColumnClause[Any]", _HasClauseElement, roles.DMLColumnRole
+    str,
+    _HasClauseElement,
+    roles.DMLColumnRole,
+    "SQLCoreOperations",
 ]
 """A DML column expression.  This is a "key" inside of insert().values(),
 update().values(), and related.
@@ -235,6 +239,9 @@ There's also edge cases like JSON expression assignment, which we would want
 the DMLColumnRole to be able to accommodate.
 
 """
+
+_DMLKey = TypeVar("_DMLKey", bound=_DMLColumnArgument)
+_DMLColumnKeyMapping = Mapping[_DMLKey, Any]
 
 
 _DDLColumnArgument = Union[str, "Column[Any]", roles.DDLConstraintColumnRole]
@@ -261,6 +268,8 @@ _TypeEngineArgument = Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
 _EquivalentColumnMap = Dict["ColumnElement[Any]", Set["ColumnElement[Any]"]]
 
 _LimitOffsetType = Union[int, _ColumnExpressionArgument[int], None]
+
+_AutoIncrementType = Union[bool, Literal["auto", "ignore_fk"]]
 
 if TYPE_CHECKING:
 

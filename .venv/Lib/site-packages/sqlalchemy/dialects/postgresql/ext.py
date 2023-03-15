@@ -7,7 +7,6 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-from itertools import zip_longest
 from typing import Any
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -164,16 +163,19 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         :param \*elements:
 
           A sequence of two tuples of the form ``(column, operator)`` where
-          "column" is a SQL expression element or a raw SQL string, most
-          typically a :class:`_schema.Column` object,
-          and "operator" is a string
-          containing the operator to use.   In order to specify a column name
-          when a  :class:`_schema.Column` object is not available,
-          while ensuring
+          "column" is either a :class:`_schema.Column` object, or a SQL
+          expression element (e.g. ``func.int8range(table.from, table.to)``)
+          or the name of a column as string, and "operator" is a string
+          containing the operator to use (e.g. `"&&"` or `"="`).
+
+          In order to specify a column name when a :class:`_schema.Column`
+          object is not available, while ensuring
           that any necessary quoting rules take effect, an ad-hoc
           :class:`_schema.Column` or :func:`_expression.column`
-          object should be
-          used.
+          object should be used.
+          The ``column`` may also be a string SQL expression when
+          passed as :func:`_expression.literal_column` or
+          :func:`_expression.text`
 
         :param name:
           Optional, the in-database name of this constraint.
@@ -253,22 +255,20 @@ class ExcludeConstraint(ColumnCollectionConstraint):
 
         self._render_exprs = [
             (
-                expr if isinstance(expr, elements.ClauseElement) else colexpr,
+                expr if not isinstance(expr, str) else table.c[expr],
                 name,
                 operator,
             )
-            for (expr, name, operator), colexpr in zip_longest(
-                self._render_exprs, self.columns
-            )
+            for expr, name, operator in (self._render_exprs)
         ]
 
     def _copy(self, target_table=None, **kw):
         elements = [
             (
                 schema._copy_expression(expr, self.parent, target_table),
-                self.operators[expr.name],
+                operator,
             )
-            for expr in self.columns
+            for expr, _, operator in self._render_exprs
         ]
         c = self.__class__(
             *elements,

@@ -21,6 +21,7 @@ from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Set
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -40,6 +41,8 @@ from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
 from .relationships import RelationshipProperty
+from .util import de_stringify_annotation
+from .util import de_stringify_union_elements
 from .. import exc as sa_exc
 from .. import ForeignKey
 from .. import log
@@ -51,8 +54,6 @@ from ..sql.schema import Column
 from ..sql.schema import SchemaConst
 from ..sql.type_api import TypeEngine
 from ..util.typing import de_optionalize_union_types
-from ..util.typing import de_stringify_annotation
-from ..util.typing import de_stringify_union_elements
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_optional_union
 from ..util.typing import is_pep593
@@ -214,10 +215,10 @@ class ColumnProperty(
         return self
 
     @property
-    def columns_to_assign(self) -> List[Column[Any]]:
+    def columns_to_assign(self) -> List[Tuple[Column[Any], int]]:
         # mypy doesn't care about the isinstance here
         return [
-            c  # type: ignore
+            (c, 0)  # type: ignore
             for c in self.columns
             if isinstance(c, Column) and c.table is None
         ]
@@ -524,6 +525,7 @@ class MappedColumn(
     __slots__ = (
         "column",
         "_creation_order",
+        "_sort_order",
         "foreign_keys",
         "_has_nullable",
         "_has_insert_default",
@@ -578,6 +580,7 @@ class MappedColumn(
                 self.deferred_group or self.deferred_raiseload
             )
 
+        self._sort_order = kw.pop("sort_order", 0)
         self.column = cast("Column[_T]", Column(*arg, **kw))
         self.foreign_keys = self.column.foreign_keys
         self._has_nullable = "nullable" in kw and kw.get("nullable") not in (
@@ -597,6 +600,7 @@ class MappedColumn(
         new._has_insert_default = self._has_insert_default
         new._has_dataclass_arguments = self._has_dataclass_arguments
         new._use_existing_column = self._use_existing_column
+        new._sort_order = self._sort_order
         util.set_creation_order(new)
         return new
 
@@ -618,8 +622,8 @@ class MappedColumn(
             return None
 
     @property
-    def columns_to_assign(self) -> List[Column[Any]]:
-        return [self.column]
+    def columns_to_assign(self) -> List[Tuple[Column[Any], int]]:
+        return [(self.column, self._sort_order)]
 
     def __clause_element__(self) -> Column[_T]:
         return self.column
@@ -659,8 +663,9 @@ class MappedColumn(
                 )
             supercls_mapper = class_mapper(decl_scan.inherits, False)
 
+            colname = column.name if column.name is not None else key
             column = self.column = supercls_mapper.local_table.c.get(  # type: ignore # noqa: E501
-                key, column
+                colname, column
             )
 
         if column.key is None:

@@ -110,6 +110,7 @@ class ConnectionKiller:
                         and proxy_ref._pool is rec.pool
                     ):
                         self._safe(proxy_ref._checkin)
+
             if hasattr(rec, "sync_engine"):
                 await_only(rec.dispose())
             else:
@@ -454,8 +455,8 @@ class DBAPIProxyConnection:
 
     """
 
-    def __init__(self, engine, cursor_cls):
-        self.conn = engine.pool._creator()
+    def __init__(self, engine, conn, cursor_cls):
+        self.conn = conn
         self.engine = engine
         self.cursor_cls = cursor_cls
 
