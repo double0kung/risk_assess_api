@@ -30,6 +30,11 @@ def create_user():
     first_name = data.get('first_name')
     last_name = data.get('last_name')
     password = data.get('password')
+
+    # Check if user with email already exists
+    if User.query.filter_by(email=email).first() is not None:
+        return jsonify({'error': 'User with email already exists'}), 409
+
     user = User(email=email, first_name=first_name, last_name=last_name, password=password)
     db.session.add(user)
     db.session.commit()
@@ -38,6 +43,7 @@ def create_user():
         "user": user_schema.dump(user)
     }
     return jsonify(response), 201
+
 
 
 # update a specific user by id

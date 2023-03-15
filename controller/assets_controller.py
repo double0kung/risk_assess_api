@@ -31,7 +31,7 @@ def create_asset():
     owner = data.get('owner')
     location = data.get('location')
     value = data.get('value')
-    weight = data.get('weight')
+    importance_rating = data.get('importance_rating')
     description = data.get('description')
     user_id = data.get('user_id')
 
@@ -41,7 +41,7 @@ def create_asset():
         owner=owner,
         location=location,
         value=value,
-        weight=weight,
+        importance_rating=importance_rating,
         description=description,
         user_id=user_id
     )
@@ -66,15 +66,20 @@ def update_asset(asset_id):
         asset.owner = data.get('owner', asset.owner)
         asset.location = data.get('location', asset.location)
         asset.value = data.get('value', asset.value)
-        asset.weight = data.get('weight', asset.weight)
+        asset.importance_rating = data.get('importance_rating', asset.importance_rating)
         asset.description = data.get('description', asset.description)
         asset.user_id = data.get('user_id', asset.user_id)
 
         db.session.commit()
 
-        return jsonify({'message': 'Asset successfully updated'}), 200
+        response = {
+            "message": "Asset successfully updated",
+            "asset": asset_schema.dump(asset)
+        }
+        return jsonify(response), 200
     except:
         return jsonify({'message': 'Asset not found'}), 404
+
 
 # Delete a specific asset by id
 @asset.route("/<int:asset_id>", methods=["DELETE"])
