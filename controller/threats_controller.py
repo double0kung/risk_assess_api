@@ -10,6 +10,8 @@ threat = Blueprint('threat', __name__, url_prefix="/threats")
 @threat.get("/")
 def get_threats():
     threats = Threat.query.all()
+    if not threats:
+        return jsonify({"message": "No threats found."}), 404
     return threats_schema.dump(threats)
 
 
