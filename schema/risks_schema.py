@@ -2,7 +2,7 @@ from app import ma
 
 class RiskSchema(ma.Schema):
     class Meta:
-        fields = ("risk_id", "impact", "likelihood", "asset_importance", "risk_score", "risk_rating", "user_id", "asset_id", "threat_id")
+        fields = ("risk_id", "impact", "likelihood", "risk_score", "risk_rating", "user_id", "asset_id", "threat_id")
 
 class RiskRequestSchema(ma.Schema):
     class Meta:
