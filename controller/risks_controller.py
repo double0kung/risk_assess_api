@@ -91,34 +91,62 @@ def update_risk(risk_id):
 
     # Update the existing risk object
     for key, value in data.items():
-        if hasattr(risk, key):
+        if hasattr(risk, key): # returns True if an object has a given attribute
             setattr(risk, key, value)
 
-    # Recalculate risk score and rating
-    asset = Asset.query.get(risk.asset_id)
-    if not asset:
-        return jsonify({'message': 'Asset not found'}), 404
+    try:
+        # Check if asset_id exists
+        if 'asset_id' in data:
+            asset_id = data['asset_id']
+            asset = Asset.query.get(asset_id)
+            if not asset:
+                raise ValueError(f"Asset not found for asset_id {asset_id}")
+            risk.asset_id = asset_id
 
-    risk.risk_score = (risk.impact + risk.likelihood + asset.importance_rating) / 3
-    if risk.risk_score <= 2:
-        risk.risk_rating = 'Very Low'
-    elif risk.risk_score <= 4:
-        risk.risk_rating = 'Low'
-    elif risk.risk_score <= 6:
-        risk.risk_rating = 'Medium'
-    elif risk.risk_score <= 8:
-        risk.risk_rating = 'High'
-    else:
-        risk.risk_rating = 'Very High'
+        # Check if threat_id exists
+        if 'threat_id' in data:
+            threat_id = data['threat_id']
+            threat = Threat.query.get(threat_id)
+            if not threat:
+                raise ValueError(f"Threat not found for threat_id {threat_id}")
+            risk.threat_id = threat_id
 
-    # Save the changes to the database
-    db.session.commit()
+        # Recalculate risk score and rating
+        asset = Asset.query.get(risk.asset_id)
+        if not asset:
+            raise ValueError(f"Asset not found for asset_id {risk.asset_id}")
+        risk.risk_score = (risk.impact + risk.likelihood + asset.importance_rating) / 3
+        if risk.risk_score <= 2:
+            risk.risk_rating = 'Very Low'
+        elif risk.risk_score <= 4:
+            risk.risk_rating = 'Low'
+        elif risk.risk_score <= 6:
+            risk.risk_rating = 'Medium'
+        elif risk.risk_score <= 8:
+            risk.risk_rating = 'High'
+        else:
+            risk.risk_rating = 'Very High'
 
-    # Serialize the updated risk data
-    result = risk_schema.dump(risk)
+        # Save the changes to the database
+        db.session.commit()
 
-    # Return the serialized data
-    return jsonify(result), 200
+        # Serialize the updated risk data
+        result = risk_schema.dump(risk)
+
+        # Return the serialized data
+        return jsonify(result), 200
+
+    except ValueError as e:
+        # Rollback the changes and return a 404 Not Found with error message
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 404
+
+    except:
+        # Rollback the changes and return a 500 Internal Server Error
+        db.session.rollback()
+        return jsonify({'message': 'An error occurred while updating the risk.'}), 500
+
+
 
 
 # Delete Risk
