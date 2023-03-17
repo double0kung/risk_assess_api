@@ -9,7 +9,6 @@ class Asset(db.Model):
     owner = db.Column(db.String()) # name of owner of asset
     location = db.Column(db.String()) # location of asset ie cloud or physical address
     value = db.Column(db.Float()) # value in dollars
-    importance_rating = db.Column(db.Float()) # Importance rating of the asset on a scale of 1-10
     description = db.Column(db.String()) # short description of asset's purpose or use case
     
     user_id = db.Column(db.Integer(), db.ForeignKey('users.id'))

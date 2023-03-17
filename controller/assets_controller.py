@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from model.assets_model import Asset
 from schema.assets_schema import asset_schema, assets_schema
@@ -7,8 +8,10 @@ asset = Blueprint('asset', __name__, url_prefix="/assets")
 
 # Retrieve all assets
 @asset.get("/")
+@jwt_required()
 def get_assets():
-    assets = Asset.query.all()
+    current_user_id = get_jwt_identity()
+    assets = Asset.query.filter_by(user_id=current_user_id).all()
     if not assets:
         return jsonify({'message': 'No assets found.'}), 404
     return assets_schema.dump(assets)
@@ -16,14 +19,17 @@ def get_assets():
 
 # Get a specific asset by id
 @asset.route("/<int:asset_id>", methods=["GET"])
+@jwt_required()
 def get_asset(asset_id):
-    asset = Asset.query.get(asset_id)
+    current_user_id = get_jwt_identity()
+    asset = Asset.query.filter_by(id=asset_id, user_id=current_user_id).first()
     if not asset:
-        return jsonify({'error': 'Asset not found'}), 404
+        return jsonify({'error': 'Asset not found or unauthorized'}), 404
     return asset_schema.dump(asset)
 
 # Create a new asset
 @asset.route("/", methods=["POST"])
+@jwt_required()
 def create_asset():
     data = request.json
     name = data.get('name')
@@ -31,9 +37,12 @@ def create_asset():
     owner = data.get('owner')
     location = data.get('location')
     value = data.get('value')
-    importance_rating = data.get('importance_rating')
     description = data.get('description')
     user_id = data.get('user_id')
+
+    current_user_id = get_jwt_identity()
+    if user_id != current_user_id:
+        return jsonify({'error': 'Unauthorized'}), 401
 
     asset = Asset(
         name=name,
@@ -41,7 +50,6 @@ def create_asset():
         owner=owner,
         location=location,
         value=value,
-        importance_rating=importance_rating,
         description=description,
         user_id=user_id
     )
@@ -57,37 +65,39 @@ def create_asset():
 
 # Update a specific asset by id
 @asset.route("/<int:asset_id>", methods=["PUT"])
+@jwt_required()
 def update_asset(asset_id):
-    try:
-        asset = Asset.query.get_or_404(asset_id)
-        data = request.json
-        asset.name = data.get('name', asset.name)
-        asset.asset_type = data.get('asset_type', asset.asset_type)
-        asset.owner = data.get('owner', asset.owner)
-        asset.location = data.get('location', asset.location)
-        asset.value = data.get('value', asset.value)
-        asset.importance_rating = data.get('importance_rating', asset.importance_rating)
-        asset.description = data.get('description', asset.description)
-        asset.user_id = data.get('user_id', asset.user_id)
+    current_user_id = get_jwt_identity()
+    asset = Asset.query.filter_by(id=asset_id, user_id=current_user_id).first()
+    if not asset:
+        return jsonify({'message': 'Asset not found or unauthorized'}), 404
 
-        db.session.commit()
+    data = request.json
+    asset.name = data.get('name', asset.name)
+    asset.asset_type = data.get('asset_type', asset.asset_type)
+    asset.owner = data.get('owner', asset.owner)
+    asset.location = data.get('location', asset.location)
+    asset.value = data.get('value', asset.value)
+    asset.description = data.get('description', asset.description)
 
-        response = {
-            "message": "Asset successfully updated",
-            "asset": asset_schema.dump(asset)
-        }
-        return jsonify(response), 200
-    except:
-        return jsonify({'message': 'Asset not found'}), 404
+    db.session.commit()
+
+    response = {
+        "message": "Asset successfully updated",
+        "asset": asset_schema.dump(asset)
+    }
+    return jsonify(response), 200
 
 
 # Delete a specific asset by id
 @asset.route("/<int:asset_id>", methods=["DELETE"])
+@jwt_required()
 def delete_asset(asset_id):
-    try:
-        asset = Asset.query.get_or_404(asset_id)
-        db.session.delete(asset)
-        db.session.commit()
-        return jsonify({'message': 'Asset deleted successfully'}), 204
-    except:
-        return jsonify({'message': 'Asset not found'}), 404
+    current_user_id = get_jwt_identity()
+    asset = Asset.query.filter_by(id=asset_id, user_id=current_user_id).first()
+    if not asset:
+        return jsonify({'message': 'Asset not found or unauthorized'}), 404
+
+    db.session.delete(asset)
+    db.session.commit()
+    return jsonify({'message': 'Asset deleted successfully'}), 204

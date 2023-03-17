@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from model.risks_model import Risk
 from model.assets_model import Asset
 from model.threats_model import Threat
+from model.users_model import User
 from schema.risks_schema import risk_schema, risks_schema, risk_request_schema, RiskRequestSchema
 from app import db
 
@@ -58,19 +59,41 @@ def create_risk():
     db.session.commit()
 
     # Return new risk
-    return risk_schema.jsonify(new_risk), 201
+    message = f"Risk rating has been registered for the asset \"{asset.name}\" and threat \"{threat.name}\""
+    return jsonify({'message': message, 'data': risk_schema.dump(new_risk)}), 201
 
-# Retrieve all risks
+# Retreive all risks or user's risks list
 @risk.route("/", methods=["GET"])
 def get_risks():
-    # Get all risks
-    risks = Risk.query.all()
+    # Get user_id query parameter for API endpoint eg.GET /risks?user_id=1
+    user_id = request.args.get('user_id')
+
+    # Filter risks by user_id if it exists
+    if user_id:
+        risks = Risk.query.filter_by(user_id=user_id).all()
+    else:
+        risks = Risk.query.all()
 
     # Serialize the queryset
     result = risks_schema.dump(risks)
 
-    # Return the serialized data
-    return jsonify(result)
+    # Get user name if user_id exists
+    if user_id:
+        user = User.query.get(user_id)
+        if user:
+            first_name = user.first_name
+            message = f"{first_name}'s risks register"
+        else:
+            message = "User not found"
+    else:
+        message = "All risks"
+
+    # Return the serialized data and message
+    return jsonify({"message": message, "data": result})
+
+
+
+
 
 # Update Risks
 @risk.route("/<int:risk_id>", methods=["PUT"])
