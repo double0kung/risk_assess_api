@@ -36,111 +36,115 @@ ORM provides a way to interact with a database using object-oriented programming
 
 ## Endpoints:
 
+### Users
+
 GET /users: Retrieve a list of all users
-
 GET /users/{user_id}: Retrieve information about a specific user
-
 POST /users: Create a new user
-
 PUT /users/{user_id}: Update information about a specific user
-
 DELETE /users/{user_id}: Delete a specific user
 
+### Assets
+
 GET /assets: Retrieve a list of all assets
-
 GET /assets/{asset_id}: Retrieve information about a specific asset
-
 POST /assets: Create a new asset
-
 PUT /assets/{asset_id}: Update information about a specific asset
-
 DELETE /assets/{asset_id}: Delete a specific asset
 
-GET /controls: Retrieve a list of all controls
-
-GET /controls/{control_id}: Retrieve information about a specific control
-
-POST /controls: Create a new control
-
-PUT /controls/{control_id}: Update information about a specific control
-
-DELETE /controls/{control_id}: Delete a specific control
+### Threats
 
 GET /threats: Retrieve a list of all threats
-
 GET /threats/{threat_id}: Retrieve information about a specific threat
-
 POST /threats: Create a new threat
-
 PUT /threats/{threat_id}: Update information about a specific threat
-
 DELETE /threats/{threat_id}: Delete a specific threat
 
+### Risks
+
 GET /risks: Retrieve a list of all risks
-
 GET /risks/{risk_id}: Retrieve information about a specific risk
-
 POST /risks: Create a new risk
-
 PUT /risks/{risk_id}: Update information about a specific risk
-
 DELETE /risks/{risk_id}: Delete a specific risk
 
-GET /reports: Retrieve a list of all reports
+### Reports
 
-GET /reports/{report_id}: Retrieve information about a specific report
-
-POST /reports: Create a new report
-
-PUT /reports/{report_id}: Update information about a specific report
-
-DELETE /reports/{report_id}: Delete a specific report
-
-GET /risk_calculators: Retrieve a list of all risk calculators
-
-GET /risk_calculators/{calculator_id}: Retrieve information about a specific risk calculator
-
-POST /risk_calculators: Create a new risk calculator
-
-PUT /risk_calculators/{calculator_id}: Update information about a specific risk calculator
-
-DELETE /risk_calculators/{calculator_id}: Delete a specific risk calculator
-
-GET /control_risks: Retrieve a list of all control risks
-
-GET /control_risks/{control_risk_id}: Retrieve information about a specific control risk
-
-POST /control_risks: Create a new control risk
-
-PUT /control_risks/{control_risk_id}: Update information about a specific control risk
-
-DELETE /control_risks/{control_risk_id}: Delete a specific control risk
+GET /reports: Gnerate a report for specific user.
 
 
 
 ## App's ERD:
+![DBeaver ERD RiskAssessAPI](https://user-images.githubusercontent.com/60038702/225978630-98a001cc-3b6f-482a-80bc-706fc89d2200.png)
 
 
-##Detail any third party services:
+## Detail any third party services:
 
-POSTMAN to test API
+POSTMAN
+DBeaver
+certifi==2022.12.7
+charset-normalizer==3.1.0
+click==8.1.3
+colorama==0.4.6
+Flask==2.2.2
+Flask-JWT-Extended==4.4.4
+flask-marshmallow==0.14.0
+Flask-SQLAlchemy==3.0.3
+greenlet==2.0.2
+gunicorn==20.1.0
+idna==3.4
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.2
+marshmallow==3.19.0
+marshmallow-sqlalchemy==0.29.0
+packaging==23.0
+psycopg2-binary==2.9.5
+PyJWT==2.6.0
+python-dotenv==0.21.1
+requests==2.28.2
+six==1.16.0
+SQLAlchemy==2.0.6
+typing_extensions==4.4.0
+urllib3==1.26.15
+Werkzeug==2.2.2
 
-DB Browser for SQLite
+POSTMAN - A tool used for testing API endpoints using CRUD methods (GET, POST, DELETE, PUT)
+DBeaver - A database management tool used for connecting to various database systems, executing SQL queries, and viewing and modifying database structures and data.
 
-Flask-Marshmallow for object serialisation or deserialisation library
-
-Flask-RESTful
-
-Flask-Security
-
-Pytest
-
-
+The rest are Python packages used to build the Flask application and provide additional functionality like managing environment variables, managing database connections, serialization and deserialization of data, and managing web requests and responses.
 
 ## Project's models and relationships:
 
+My project uses Flask SQLAlchemy to define several models, each representing a different data entity in my application. These models define the attributes and relationships of the entities with each other.
+
+One of the models is the Asset model, which describes the assets in the system and includes attributes such as their name, type, owner, location, value, and description. Assets are linked to users through a foreign key relationship.
+
+Another model is the Report model, which captures information about risk assessment reports. This includes asset details like name, type, owner, location, value, and description, as well as information about threats such as name, type, and description. Reports are also linked to users through a foreign key relationship.
+
+The Risk model represents the risk scores associated with a specific asset and threat pair. It includes attributes such as impact, likelihood, risk score, and risk rating, and is linked to users, assets, and threats through foreign key relationships.
+
+The Threat model captures information about the different types of threats in the system, including their name, type, and description.
+
+Finally, the User model describes the user accounts in my application and includes attributes like email, first name, last name, and password. The User model is used to associate users with assets, reports, and risks through foreign key relationships.
+
+Unfortunately, due to time constraints and distractions, I haven't been able to create additional models such as controls to be applied to risks.
 
 ## Database relations implementation:
+
+Flask SQLAlchemy is used to create models that represent different data entities in the application. These models have attributes that describe their properties, and they also have relationships with other models.
+
+For example, the User model describes the users in the application. The User model has attributes such as email, first name, last name, and password. There is also an Asset model that describes assets in the system, including attributes such as name, type, owner, location, value, and description.
+
+To create a relationship between these two models, a foreign key constraint is used. Specifically, a user_id column is added to the Asset model, which references the id column of the User model. This creates a one-to-many relationship between users and assets, meaning that a user can have many assets, but an asset can only belong to one user.
+
+Similarly, there is a Threat model that describes the different types of threats in the system. The Threat model has attributes such as name, type, and description. There is also a Risk model that represents the risk scores associated with a specific asset and threat pair, including attributes such as impact, likelihood, risk score, and risk rating.
+
+To create relationships between these models, foreign key constraints are also used. Specifically, asset_id and threat_id columns are added to the Risk model, which reference the id columns of the Asset and Threat models, respectively. This creates a many-to-many relationship between assets and threats, meaning that an asset can be associated with many threats, and a threat can be associated with many assets.
+
+Finally, there is a Report model that captures risk assessment reports, including information about assets and threats. To create relationships between the Report model and other models, nested fields in the schema are used. Specifically, the Nested() method is used to nest instances of the AssetSchema, ThreatSchema, and RiskSchema inside the ReportSchema. This allows information about the associated assets, threats, and risks to be included in the serialized output.
+
+Overall, by using foreign key constraints and nested fields in the schema, a robust database relations implementation can be created that accurately reflects the relationships between the different data entities in the application.
 
 ## Describe the way tasks are allocated and tracked in your project:
 
