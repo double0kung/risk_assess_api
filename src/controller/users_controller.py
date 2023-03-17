@@ -90,8 +90,6 @@ def update_user(user_id):
         return jsonify({'message': 'User not found'}), 404
 
 
-from flask_jwt_extended import jwt_required, get_jwt_identity
-
 # delete a specific user by id
 @user.route("/<int:user_id>", methods=["DELETE"])
 @jwt_required()

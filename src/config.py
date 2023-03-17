@@ -12,7 +12,7 @@ class Config(object):
 
         return db_url
 
-    # JWT configuration
+    # JWT configuration to retrieve from the environment variable
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'coderacademy'
     JWT_BLACKLIST_ENABLED = True
     JWT_BLACKLIST_TOKEN_CHECKS = ['access', 'refresh']
